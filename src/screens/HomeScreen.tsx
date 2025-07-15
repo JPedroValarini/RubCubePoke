@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useQuery } from '@apollo/client';
+import { GET_POKEMONS } from './../graphql/queries';
 
 interface Pokemon {
   id: string;
@@ -7,30 +9,59 @@ interface Pokemon {
   isFavorite?: boolean;
 }
 
-const HomeScreen = ({ navigation }: any) => {
-  const mockPokemons = useMemo<Pokemon[]>(() => [
-    { id: '1', name: 'bulbasaur', isFavorite: false },
-    { id: '2', name: 'ivysaur', isFavorite: true },
-    { id: '3', name: 'venusaur', isFavorite: false },
-    { id: '4', name: 'charmander', isFavorite: false },
-    { id: '5', name: 'charmeleon', isFavorite: true },
-    { id: '6', name: 'charizard', isFavorite: false },
-    { id: '7', name: 'squirtle', isFavorite: true },
-    { id: '8', name: 'wartortle', isFavorite: false },
-    { id: '9', name: 'blastoise', isFavorite: false },
-  ], []); 
+const LIMIT = 50;
 
-  const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>(mockPokemons);
+const HomeScreen = ({ navigation }: any) => {
+  const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>([]);
+  const [allPokemons, setAllPokemons] = useState<Pokemon[]>([]);
   const [search, setSearch] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  const { loading, error, data } = useQuery(GET_POKEMONS, {
+    variables: { limit: LIMIT, offset },
+    fetchPolicy: 'cache-and-network',
+  });
 
   useEffect(() => {
-    const filtered = mockPokemons.filter(p =>
+    if (data) {
+      const newPokemons = data.pokemon_v2_pokemon.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        isFavorite: favorites.includes(String(p.id)),
+      }));
+      
+      setAllPokemons(prev => [...prev, ...newPokemons]);
+      setFilteredPokemons(prev => [...prev, ...newPokemons]);
+    }
+  }, [data, favorites]);
+
+  useEffect(() => {
+    const filtered = allPokemons.filter(p =>
       p.name.toLowerCase().includes(search.toLowerCase())
     );
     setFilteredPokemons(filtered);
-  }, [mockPokemons, search]);
+  }, [search, allPokemons]);
+
+  const loadMore = () => {
+    if (!loading) {
+      setOffset(prev => prev + LIMIT);
+    }
+  };
 
   const toggleFavorite = (id: string) => {
+    setFavorites(prev =>
+      prev.includes(id)
+        ? prev.filter(favId => favId !== id)
+        : [...prev, id]
+    );
+
+    setAllPokemons(prev =>
+      prev.map(p =>
+        p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
+      )
+    );
+
     setFilteredPokemons(prev =>
       prev.map(p =>
         p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
@@ -52,6 +83,14 @@ const HomeScreen = ({ navigation }: any) => {
     </TouchableOpacity>
   );
 
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text>Erro ao carregar pokémons</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>PokeRub</Text>
@@ -66,12 +105,15 @@ const HomeScreen = ({ navigation }: any) => {
         data={filteredPokemons}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loading ? <ActivityIndicator size="large" color="#555" /> : null
+        }
       />
     </View>
   );
 };
-
-export default HomeScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
@@ -102,3 +144,5 @@ const styles = StyleSheet.create({
     color: '#ffc107',
   },
 });
+
+export default HomeScreen;
