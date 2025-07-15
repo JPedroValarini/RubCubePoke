@@ -17,7 +17,7 @@ interface Pokemon {
   isFavorite?: boolean;
 }
 
-const POKEMONS_PER_PAGE = 11;
+const POKEMONS_PER_PAGE = 10;
 const TOTAL_POKEMONS = 898;
 const TOTAL_PAGES = Math.ceil(TOTAL_POKEMONS / POKEMONS_PER_PAGE);
 
@@ -45,8 +45,8 @@ const HomeScreen = ({ navigation }: any) => {
   const filteredPokemons = useMemo(() => {
     return search
       ? pokemons.filter(p =>
-          p.name.toLowerCase().includes(search.toLowerCase())
-        )
+        p.name.toLowerCase().includes(search.toLowerCase())
+      )
       : pokemons;
   }, [pokemons, search]);
 
