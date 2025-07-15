@@ -8,7 +8,7 @@ function App() {
     <ApolloProvider client={client}>
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <HomeScreen navigation={{ navigate: () => {} }} />
+        <HomeScreen navigation={{ navigate: () => { } }} />
       </View>
     </ApolloProvider>
   );

@@ -13,7 +13,7 @@ const LIMIT = 50;
 
 const HomeScreen = ({ navigation }: any) => {
   const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>([]);
-  const [allPokemons, setAllPokemons] = useState<Pokemon[]>([]);
+  const [, setAllPokemons] = useState<Pokemon[]>([]);
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -30,21 +30,25 @@ const HomeScreen = ({ navigation }: any) => {
         name: p.name,
         isFavorite: favorites.includes(String(p.id)),
       }));
-      
-      setAllPokemons(prev => [...prev, ...newPokemons]);
-      setFilteredPokemons(prev => [...prev, ...newPokemons]);
-    }
-  }, [data, favorites]);
 
-  useEffect(() => {
-    const filtered = allPokemons.filter(p =>
-      p.name.toLowerCase().includes(search.toLowerCase())
-    );
-    setFilteredPokemons(filtered);
-  }, [search, allPokemons]);
+      setAllPokemons(prev => {
+        const combined = [...prev, ...newPokemons];
+        return Array.from(new Map(combined.map(p => [p.id, p])).values());
+      });
+
+      setFilteredPokemons(prev => {
+        const combined = [...prev, ...newPokemons];
+        const unique = Array.from(new Map(combined.map(p => [p.id, p])).values());
+        return search
+          ? Array.from(unique).filter(p =>
+            p.name.toLowerCase().includes(search.toLowerCase()))
+          : Array.from(unique);
+      });
+    }
+  }, [data, favorites, search]);
 
   const loadMore = () => {
-    if (!loading) {
+    if (!loading && data?.pokemon_v2_pokemon?.length === LIMIT) {
       setOffset(prev => prev + LIMIT);
     }
   };
@@ -75,7 +79,12 @@ const HomeScreen = ({ navigation }: any) => {
       onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
     >
       <Text style={styles.name}>{item.name}</Text>
-      <TouchableOpacity onPress={() => toggleFavorite(item.id)}>
+      <TouchableOpacity
+        onPress={(e) => {
+          e.stopPropagation();
+          toggleFavorite(item.id);
+        }}
+      >
         <Text style={styles.favoriteIcon}>
           {item.isFavorite ? '★' : '☆'}
         </Text>
@@ -87,6 +96,7 @@ const HomeScreen = ({ navigation }: any) => {
     return (
       <View style={styles.container}>
         <Text>Erro ao carregar pokémons</Text>
+        <Text>{error.message}</Text>
       </View>
     );
   }
@@ -103,13 +113,16 @@ const HomeScreen = ({ navigation }: any) => {
 
       <FlatList
         data={filteredPokemons}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => `pokemon-${item.id}`}
         renderItem={renderItem}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
           loading ? <ActivityIndicator size="large" color="#555" /> : null
         }
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
       />
     </View>
   );
@@ -117,7 +130,12 @@ const HomeScreen = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 8 },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#333',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -125,6 +143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 12,
+    backgroundColor: '#fff',
   },
   item: {
     padding: 12,
@@ -138,7 +157,11 @@ const styles = StyleSheet.create({
   favoriteItem: {
     backgroundColor: '#fff3cd',
   },
-  name: { fontSize: 18, textTransform: 'capitalize' },
+  name: {
+    fontSize: 18,
+    textTransform: 'capitalize',
+    color: '#222',
+  },
   favoriteIcon: {
     fontSize: 20,
     color: '#ffc107',
