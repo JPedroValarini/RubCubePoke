@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar, StyleSheet } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
 import client from './src/api/apolloClient';
+import FavoriteScreen from './src/screens/FavoriteScreen';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -26,6 +27,11 @@ function App() {
             name="Details"
             component={DetailScreen}
             options={{ title: 'Detalhes do Pokémon' }}
+          />
+          <Stack.Screen
+            name="Favorites"
+            component={FavoriteScreen}
+            options={{ title: 'Pokémons Favoritos' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
