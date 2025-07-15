@@ -125,9 +125,21 @@ const HomeScreen = ({ navigation }: any) => {
         onChangeText={setSearch}
       />
 
+      <TouchableOpacity
+        style={styles.favButton}
+        onPress={() =>
+          navigation.navigate('Favorites', {
+            favorites: pokemons.filter(p => p.isFavorite),
+          })
+        }
+      >
+        <Text style={styles.favButtonText}>Ver Favoritos</Text>
+      </TouchableOpacity>
+
       {loading ? (
         <ActivityIndicator size="large" color="#555" />
       ) : (
+
         <FlatList
           data={filteredPokemons}
           keyExtractor={(item) => `pokemon-${item.id}`}
@@ -191,6 +203,19 @@ const styles = StyleSheet.create({
   activePageButton: {
     backgroundColor: '#ffc107',
   },
+  favButton: {
+    backgroundColor: '#ffc107',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  favButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
   pageText: {
     fontSize: 16,
   },
