@@ -1,5 +1,13 @@
-import { useState, useEffect } from 'react';
-import { View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { useQuery } from '@apollo/client';
 import { GET_POKEMONS } from './../graphql/queries';
 
@@ -9,67 +17,44 @@ interface Pokemon {
   isFavorite?: boolean;
 }
 
-const LIMIT = 50;
+const POKEMONS_PER_PAGE = 11;
+const TOTAL_POKEMONS = 898;
+const TOTAL_PAGES = Math.ceil(TOTAL_POKEMONS / POKEMONS_PER_PAGE);
 
 const HomeScreen = ({ navigation }: any) => {
-  const [filteredPokemons, setFilteredPokemons] = useState<Pokemon[]>([]);
-  const [, setAllPokemons] = useState<Pokemon[]>([]);
   const [search, setSearch] = useState('');
-  const [offset, setOffset] = useState(0);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const offset = (currentPage - 1) * POKEMONS_PER_PAGE;
 
   const { loading, error, data } = useQuery(GET_POKEMONS, {
-    variables: { limit: LIMIT, offset },
+    variables: { limit: POKEMONS_PER_PAGE, offset },
     fetchPolicy: 'cache-and-network',
   });
 
-  useEffect(() => {
-    if (data) {
-      const newPokemons = data.pokemon_v2_pokemon.map((p: any) => ({
-        id: String(p.id),
-        name: p.name,
-        isFavorite: favorites.includes(String(p.id)),
-      }));
+  const pokemons: Pokemon[] = useMemo(() => {
+    if (!data) return [];
+    return data.pokemon_v2_pokemon.map((p: any) => ({
+      id: String(p.id),
+      name: p.name,
+      isFavorite: favorites.includes(String(p.id)),
+    }));
+  }, [data, favorites]);
 
-      setAllPokemons(prev => {
-        const combined = [...prev, ...newPokemons];
-        return Array.from(new Map(combined.map(p => [p.id, p])).values());
-      });
-
-      setFilteredPokemons(prev => {
-        const combined = [...prev, ...newPokemons];
-        const unique = Array.from(new Map(combined.map(p => [p.id, p])).values());
-        return search
-          ? Array.from(unique).filter(p =>
-            p.name.toLowerCase().includes(search.toLowerCase()))
-          : Array.from(unique);
-      });
-    }
-  }, [data, favorites, search]);
-
-  const loadMore = () => {
-    if (!loading && data?.pokemon_v2_pokemon?.length === LIMIT) {
-      setOffset(prev => prev + LIMIT);
-    }
-  };
+  const filteredPokemons = useMemo(() => {
+    return search
+      ? pokemons.filter(p =>
+          p.name.toLowerCase().includes(search.toLowerCase())
+        )
+      : pokemons;
+  }, [pokemons, search]);
 
   const toggleFavorite = (id: string) => {
     setFavorites(prev =>
       prev.includes(id)
         ? prev.filter(favId => favId !== id)
         : [...prev, id]
-    );
-
-    setAllPokemons(prev =>
-      prev.map(p =>
-        p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-      )
-    );
-
-    setFilteredPokemons(prev =>
-      prev.map(p =>
-        p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-      )
     );
   };
 
@@ -92,6 +77,35 @@ const HomeScreen = ({ navigation }: any) => {
     </TouchableOpacity>
   );
 
+  const renderPagination = () => {
+    const visiblePages = 5;
+    const startPage = Math.max(
+      1,
+      Math.min(currentPage - 2, TOTAL_PAGES - visiblePages + 1)
+    );
+
+    return (
+      <View style={styles.paginationContainer}>
+        {Array.from({ length: Math.min(visiblePages, TOTAL_PAGES) }, (_, i) => {
+          const page = startPage + i;
+          return (
+            <TouchableOpacity
+              key={page}
+              style={[
+                styles.pageButton,
+                currentPage === page && styles.activePageButton,
+              ]}
+              onPress={() => setCurrentPage(page)}
+              disabled={currentPage === page}
+            >
+              <Text style={styles.pageText}>{page}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
   if (error) {
     return (
       <View style={styles.container}>
@@ -111,19 +125,16 @@ const HomeScreen = ({ navigation }: any) => {
         onChangeText={setSearch}
       />
 
-      <FlatList
-        data={filteredPokemons}
-        keyExtractor={(item) => `pokemon-${item.id}`}
-        renderItem={renderItem}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          loading ? <ActivityIndicator size="large" color="#555" /> : null
-        }
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={5}
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#555" />
+      ) : (
+        <FlatList
+          data={filteredPokemons}
+          keyExtractor={(item) => `pokemon-${item.id}`}
+          renderItem={renderItem}
+          ListFooterComponent={renderPagination}
+        />
+      )}
     </View>
   );
 };
@@ -165,6 +176,23 @@ const styles = StyleSheet.create({
   favoriteIcon: {
     fontSize: 20,
     color: '#ffc107',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginVertical: 16,
+  },
+  pageButton: {
+    padding: 8,
+    marginHorizontal: 4,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+  },
+  activePageButton: {
+    backgroundColor: '#ffc107',
+  },
+  pageText: {
+    fontSize: 16,
   },
 });
 
