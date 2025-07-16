@@ -1,18 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
 import { useQuery } from '@apollo/client';
 import { GET_POKEMONS } from './../graphql/queries';
 import { useFavorites } from '../context/FavoritesContext';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import PokemonCard from '../components/PokemonCard';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../redux/store';
+import { evolvePokemon, setPokemons } from '../redux/pokemon/pokemonSlice';
+
+interface PokemonEvolution {
+  id: string;
+  name: string;
+  evolvesFromId: string | null;
+}
 
 interface PokemonApiResponse {
   id: string;
@@ -22,6 +32,7 @@ interface PokemonApiResponse {
       name: string;
     };
   }[];
+  evolutionChain: PokemonEvolution[];
 }
 
 const POKEMONS_PER_PAGE = 10;
@@ -31,8 +42,11 @@ const TOTAL_PAGES = Math.ceil(TOTAL_POKEMONS / POKEMONS_PER_PAGE);
 const HomeScreen = ({ navigation }: any) => {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [evolutionModalVisible, setEvolutionModalVisible] = useState(false);
+  const [selectedPokemon, setSelectedPokemon] = useState<PokemonApiResponse | null>(null);
+  const dispatch = useDispatch();
+  const { pokemons: storedPokemons, evolvedPokemons } = useSelector((state: RootState) => state.pokemon);
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
-
   const offset = (currentPage - 1) * POKEMONS_PER_PAGE;
 
   const { loading, error, data } = useQuery(GET_POKEMONS, {
@@ -41,23 +55,75 @@ const HomeScreen = ({ navigation }: any) => {
   });
 
   const pokemons: PokemonApiResponse[] = useMemo(() => {
-    if (!data) return [];
+    if (!data) return storedPokemons;
+
     return data.pokemon_v2_pokemon.map((p: any) => ({
       id: String(p.id),
       name: p.name,
-      pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || []
+      pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || [],
+      evolutionChain: p.pokemon_v2_pokemonspecy?.pokemon_v2_evolutionchain?.pokemon_v2_pokemonspecies?.map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        evolvesFromId: s.evolves_from_species_id ? String(s.evolves_from_species_id) : null
+      })) || []
     }));
-  }, [data]);
+  }, [data, storedPokemons]);
+
+  useEffect(() => {
+    if (data) {
+      const newPokemons = data.pokemon_v2_pokemon.map((p: any) => ({
+        id: String(p.id),
+        name: p.name,
+        pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || [],
+        evolutionChain: p.pokemon_v2_pokemonspecy?.pokemon_v2_evolutionchain?.pokemon_v2_pokemonspecies?.map((s: any) => ({
+          id: String(s.id),
+          name: s.name,
+          evolvesFromId: s.evolves_from_species_id ? String(s.evolves_from_species_id) : null
+        })) || []
+      }));
+
+      dispatch(setPokemons(newPokemons));
+    }
+  }, [data, dispatch]);
 
   const filteredPokemons = useMemo(() => {
     return search
-      ? pokemons.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase())
-      )
+      ? pokemons.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
       : pokemons;
   }, [pokemons, search]);
 
-  const toggleFavorite = (pokemon: PokemonApiResponse) => {
+  const getNextEvolution = useCallback((pokemon: PokemonApiResponse): PokemonEvolution | null => {
+    return pokemon.evolutionChain.find(evo => evo.evolvesFromId === pokemon.id) || null;
+  }, []);
+
+  const handleEvolutionPress = useCallback((pokemon: PokemonApiResponse) => {
+    setSelectedPokemon(pokemon);
+    setEvolutionModalVisible(true);
+  }, []);
+
+  const handleEvolutionConfirm = useCallback(() => {
+    if (selectedPokemon) {
+      const nextEvolution = getNextEvolution(selectedPokemon);
+      if (nextEvolution) {
+        dispatch(evolvePokemon({
+          originalId: selectedPokemon.id,
+          evolvedId: nextEvolution.id
+        }));
+      }
+    }
+    setEvolutionModalVisible(false);
+  }, [selectedPokemon, dispatch, getNextEvolution]);
+
+  const hasEvolved = useCallback((pokemonId: string) => {
+    return evolvedPokemons[pokemonId] !== undefined;
+  }, [evolvedPokemons]);
+
+  const getEvolvedPokemon = useCallback((pokemonId: string) => {
+    const evolvedId = evolvedPokemons[pokemonId];
+    return pokemons.find(p => p.id === evolvedId);
+  }, [evolvedPokemons, pokemons]);
+
+  const toggleFavorite = useCallback((pokemon: PokemonApiResponse) => {
     if (isFavorite(pokemon.id)) {
       removeFavorite(pokemon.id);
     } else {
@@ -70,42 +136,29 @@ const HomeScreen = ({ navigation }: any) => {
         }))
       });
     }
-  };
+  }, [isFavorite, addFavorite, removeFavorite]);
 
-  const renderItem = ({ item }: { item: PokemonApiResponse }) => {
-    const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png`;
+  const renderItem = useCallback(({ item }: { item: PokemonApiResponse }) => {
+    const evolvedId = evolvedPokemons[item.id];
+    const evolvedPokemon = getEvolvedPokemon(item.id);
 
     return (
-      <TouchableOpacity
-        style={[styles.item, isFavorite(item.id) && styles.favoriteItem]}
-        onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
-      >
-        <View style={styles.itemContent}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.pokemonImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.name}>{item.name}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleFavorite(item);
-          }}
-          style={styles.favoriteButton}
-        >
-          <MaterialIcons
-            name={isFavorite(item.id) ? 'star' : 'star-outline'}
-            size={24}
-            color="#ffc107"
-          />
-        </TouchableOpacity>
-      </TouchableOpacity>
+      <PokemonCard
+        pokemon={item}
+        isFavorite={isFavorite(evolvedId || item.id)}
+        onPress={() => navigation.navigate('Details', {
+          pokemonId: evolvedId || item.id,
+          pokemonName: item.name
+        })}
+        onFavoritePress={() => toggleFavorite(evolvedPokemon || item)}
+        onEvolutionPress={() => handleEvolutionPress(item)}
+        hasEvolved={hasEvolved(item.id)}
+        evolvedPokemon={evolvedPokemon}
+      />
     );
-  };
+  }, [evolvedPokemons, getEvolvedPokemon, isFavorite, navigation, handleEvolutionPress, hasEvolved, toggleFavorite]);
 
-  const renderPagination = () => {
+  const renderPagination = useCallback(() => {
     const visiblePages = 5;
     const startPage = Math.max(
       1,
@@ -113,30 +166,30 @@ const HomeScreen = ({ navigation }: any) => {
     );
 
     return (
-      <View style={styles.paginationContainer}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
         {Array.from({ length: Math.min(visiblePages, TOTAL_PAGES) }, (_, i) => {
           const page = startPage + i;
           return (
             <TouchableOpacity
               key={page}
               style={[
-                styles.pageButton,
-                currentPage === page && styles.activePageButton,
+                { padding: 8, marginHorizontal: 4, minWidth: 40, alignItems: 'center', backgroundColor: '#e9ecef', borderRadius: 4 },
+                currentPage === page && { backgroundColor: '#495057' },
               ]}
               onPress={() => setCurrentPage(page)}
               disabled={currentPage === page}
             >
-              <Text style={styles.pageText}>{page}</Text>
+              <Text style={{ color: '#343a40' }}>{page}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
     );
-  };
+  }, [currentPage]);
 
   if (error) {
     return (
-      <View style={styles.container}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Erro ao carregar pokémons</Text>
         <Text>{error.message}</Text>
       </View>
@@ -144,25 +197,27 @@ const HomeScreen = ({ navigation }: any) => {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>PokeRub</Text>
+    <View style={{ flex: 1, padding: 16, backgroundColor: '#f8f9fa' }}>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center', color: '#343a40' }}>
+        PokeRub
+      </Text>
       <TextInput
         placeholder="Buscar pokémon..."
-        style={styles.input}
+        style={{ backgroundColor: '#fff', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#ddd' }}
         value={search}
         onChangeText={setSearch}
       />
 
       <TouchableOpacity
-        style={styles.favButton}
+        style={{ backgroundColor: '#ffc107', padding: 12, borderRadius: 8, marginBottom: 16, alignItems: 'center' }}
         onPress={() => navigation.navigate('Favorites')}
       >
-        <Text style={styles.favButtonText}>
+        <Text style={{ fontWeight: 'bold', color: '#343a40' }}>
           Ver Favoritos ({favorites.length})
         </Text>
       </TouchableOpacity>
 
-      {loading ? (
+      {loading && !pokemons.length ? (
         <ActivityIndicator size="large" color="#555" />
       ) : (
         <FlatList
@@ -172,102 +227,63 @@ const HomeScreen = ({ navigation }: any) => {
           ListFooterComponent={renderPagination}
         />
       )}
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={evolutionModalVisible}
+        onRequestClose={() => setEvolutionModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: '80%' }}>
+            {selectedPokemon && (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' }}>
+                  Evoluir {selectedPokemon.name}?
+                </Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Image
+                      source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${selectedPokemon.id}.png` }}
+                      style={{ width: 80, height: 80 }}
+                    />
+                    <Text>{selectedPokemon.name}</Text>
+                  </View>
+
+                  <MaterialIcons name="arrow-forward" size={24} color="#333" />
+
+                  <View style={{ alignItems: 'center' }}>
+                    <Image
+                      source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${getNextEvolution(selectedPokemon)?.id}.png` }}
+                      style={{ width: 80, height: 80 }}
+                    />
+                    <Text>{getNextEvolution(selectedPokemon)?.name}</Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TouchableOpacity
+                    style={{ padding: 10, borderRadius: 5, width: '48%', alignItems: 'center', backgroundColor: '#e9ecef' }}
+                    onPress={() => setEvolutionModalVisible(false)}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{ padding: 10, borderRadius: 5, width: '48%', alignItems: 'center', backgroundColor: '#4CAF50' }}
+                    onPress={handleEvolutionConfirm}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Evoluir!</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#343a40',
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    fontSize: 16,
-  },
-  item: {
-    padding: 12,
-    backgroundColor: '#fff',
-    marginBottom: 8,
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  favoriteItem: {
-    backgroundColor: '#fff3cd',
-  },
-  itemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  pokemonImage: {
-    width: 50,
-    height: 50,
-    marginRight: 12,
-  },
-  name: {
-    fontSize: 16,
-    textTransform: 'capitalize',
-    color: '#343a40',
-    fontWeight: '500',
-  },
-  favoriteButton: {
-    padding: 8,
-  },
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 16,
-  },
-  pageButton: {
-    padding: 10,
-    marginHorizontal: 4,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 6,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  activePageButton: {
-    backgroundColor: '#ffc107',
-  },
-  pageText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  favButton: {
-    backgroundColor: '#ffc107',
-    padding: 14,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
-    elevation: 2,
-  },
-  favButtonText: {
-    color: '#343a40',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
 
 export default HomeScreen;

@@ -1,51 +1,63 @@
 import React from 'react';
-import { StatusBar, StyleSheet } from 'react-native';
+import { StatusBar } from 'react-native';
 import { ApolloProvider } from '@apollo/client';
-import client from './src/api/apolloClient';
+import { Provider as ReduxProvider } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { FavoritesProvider } from './src/context/FavoritesContext';
+import { store } from './src/redux/store';
+import client from './src/api/apolloClient';
+import { RootStackParamList } from './types';
 
+// Screens
 import HomeScreen from './src/screens/HomeScreen';
 import DetailScreen from './src/screens/DetailScreen';
 import FavoriteScreen from './src/screens/FavoriteScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function App() {
   return (
-    <ApolloProvider client={client}>
-      <FavoritesProvider>
-        <NavigationContainer>
-          <StatusBar barStyle="dark-content" />
-          <Stack.Navigator initialRouteName="Home">
-            <Stack.Screen
-              name="Home"
-              component={HomeScreen}
-              options={{ title: 'Pokémons' }}
-            />
-            <Stack.Screen
-              name="Details"
-              component={DetailScreen}
-              options={{ title: 'Detalhes do Pokémon' }}
-            />
-            <Stack.Screen
-              name="Favorites"
-              component={FavoriteScreen}
-              options={{ title: 'Pokémons Favoritos' }}
-            />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </FavoritesProvider>
-    </ApolloProvider>
+    <ReduxProvider store={store}>
+      <ApolloProvider client={client}>
+        <FavoritesProvider>
+          <NavigationContainer>
+            <StatusBar barStyle="dark-content" />
+            <Stack.Navigator
+              initialRouteName="Home"
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: '#f8f9fa',
+                },
+                headerTintColor: '#343a40',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }}
+            >
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ title: 'Pokémons' }}
+              />
+              <Stack.Screen
+                name="Details"
+                component={DetailScreen}
+                options={({ route }) => ({
+                  title: route.params.pokemonName || 'Detalhes'
+                })}
+              />
+              <Stack.Screen
+                name="Favorites"
+                component={FavoriteScreen}
+                options={{ title: 'Favoritos' }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </FavoritesProvider>
+      </ApolloProvider>
+    </ReduxProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
 export default App;
-export { styles as appStyles };
