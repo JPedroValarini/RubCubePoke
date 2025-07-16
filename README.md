@@ -45,23 +45,13 @@ Editar
 npx react-native run-android
 
 📸 Prints e evidências do produto final
-### ✅ Lista de Pokémons
-<img src="https://iili.io/FXjpZIR.png" width="300" />
-
-### 🔍 Detalhes com habilidades
-<img src="https://iili.io/FXjptXp.png" width="300" />
-
-### ⭐ Favoritos persistidos
-<img src="https://iili.io/FXjpskJ.png" width="300" />
-
-### 🔄 Evolução de Pokémons
-<img src="https://iili.io/FXjpLmv.png" width="300" />
-
-### 🎨 Outras telas
-<img src="https://iili.io/FXjyH2n.png" width="300" />
-<img src="https://iili.io/FXjyJ7s.png" width="300" />
-<img src="https://iili.io/FXjydkG.png" width="300" />
-
+![Lista de Pokémons](https://iili.io/FXjpZIR.png)
+![Detalhes com habilidades](https://iili.io/FXjptXp.png)
+![Favoritos persistidos](https://iili.io/FXjpskJ.png)
+![Evolução de Pokémons](https://iili.io/FXjpLmv.png)
+![Tela 1](https://iili.io/FXjyH2n.png)
+![Tela 2](https://iili.io/FXjyJ7s.png)
+![Tela 3](https://iili.io/FXjydkG.png)
 
 ✅ Lista de Pokémons
 
