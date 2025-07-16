@@ -1,97 +1,81 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 📱 PokéRubC - App de Pokémons com React Native
 
-# Getting Started
+Este é um app mobile desenvolvido em **React Native**, que consome a **PokéAPI** para exibir uma lista completa de Pokémons. O projeto inclui funcionalidades como:
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+- 📋 Listagem dos 898 Pokémons
+- 🔍 Busca por nome
+- ⭐ Favoritar Pokémons com persistência local
+- ⚔️ Exibição de detalhes com habilidades, tipo, altura, peso
+- 🔄 Evolução de Pokémons (via Redux)
+- 🖼️ Imagens e organização visual inspiradas no universo Pokémon
 
-## Step 1: Start Metro
+---
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🧪 Teste técnico escolhido
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+Escolhi o desafio de **criar um app utilizando a PokéAPI** por se alinhar com meu perfil técnico e por me permitir mostrar domínio em tecnologias como **React Native**, **Redux**, **Apollo Client** e gerenciamento de estados e efeitos colaterais no mobile.
 
-```sh
-# Using npm
-npm start
+---
 
-# OR using Yarn
-yarn start
-```
+## 🔧 Como rodar o projeto localmente
 
-## Step 2: Build and run your app
+> Pré-requisitos:
+> - Node.js instalado
+> - Yarn ou NPM
+> - Ambiente React Native configurado (Android Studio ou Xcode + emulador ou dispositivo físico)
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+1. Clone o repositório:
 
-### Android
+```bash
+git clone https://github.com/seu-usuario/pokerubc.git
+cd pokerubc
+Instale as dependências:
 
-```sh
-# Using npm
-npm run android
+bash
+Copiar
+Editar
+yarn install
+# ou
+npm install
+Execute o app:
 
-# OR using Yarn
-yarn android
-```
+bash
+Copiar
+Editar
+npx react-native run-android
 
-### iOS
+📸 Prints e evidências do produto final
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+✅ Lista de Pokémons
 
-```sh
-bundle install
-```
+🔍 Detalhes com habilidades
 
-Then, and every time you update your native dependencies, run:
+⭐ Favoritos persistidos
 
-```sh
-bundle exec pod install
-```
+🔄 Evolução de Pokémons
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+⚙️ Tecnologias utilizadas
+React Native
 
-```sh
-# Using npm
-npm run ios
+TypeScript
 
-# OR using Yarn
-yarn ios
-```
+Apollo Client (GraphQL)
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+Redux + Redux Toolkit
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+AsyncStorage (para persistência dos favoritos)
 
-## Step 3: Modify your app
+PokéAPI GraphQL wrapper
 
-Now that you have successfully run the app, let's make changes!
+🧠 Desafios e observações
+Durante o desenvolvimento, alguns pontos exigiram mais atenção:
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Evolução de Pokémons: Lidar com a lógica de evolução de forma eficiente exigiu uma modelagem cuidadosa dos dados, especialmente para manter uma estrutura consistente mesmo após evoluir um Pokémon.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Persistência de favoritos: Foi necessário garantir que favoritos fossem persistidos corretamente sem duplicidade, mesmo em estados evolutivos distintos.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+Performance: Evitei requisições desnecessárias usando useMemo, cache do Apollo e Redux para estados globais.
 
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+💬 Considerações finais
+Esse desafio foi uma experiência incrível para explorar a PokéAPI em profundidade e aplicar boas práticas de desenvolvimento mobile. Aproveitei a oportunidade para testar integração entre GraphQL, Redux e persistência local, focando em uma experiência fluida e funcional.
