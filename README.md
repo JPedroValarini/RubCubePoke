@@ -45,6 +45,14 @@ Editar
 npx react-native run-android
 
 📸 Prints e evidências do produto final
+<img width="1080" height="2400" alt="Screenshot_20250716-190828" src="https://github.com/user-attachments/assets/16fc46b2-f377-4fc8-a05c-8dd44d461650" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190742" src="https://github.com/user-attachments/assets/cd79d834-84e3-4232-9eb8-92588f9f688c" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190710" src="https://github.com/user-attachments/assets/6a4a80e1-8fb5-413b-a0dc-c36cb1982232" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190655" src="https://github.com/user-attachments/assets/2dba4889-1b8b-4bc8-9346-7d873b6366db" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190912" src="https://github.com/user-attachments/assets/323b8147-fb12-45a8-9a0b-265ac6a92089" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190904" src="https://github.com/user-attachments/assets/2ff56b17-cb96-478b-9b8d-41967ce28b18" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190843" src="https://github.com/user-attachments/assets/8aa68fa5-2f08-4276-8108-db235382e81a" />
+<img width="1080" height="2400" alt="Screenshot_20250716-190834" src="https://github.com/user-attachments/assets/bcc4be32-280e-4c66-8b57-10601533d7e0" />
 
 
 ✅ Lista de Pokémons
