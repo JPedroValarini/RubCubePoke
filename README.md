@@ -31,17 +31,11 @@ git clone https://github.com/seu-usuario/pokerubc.git
 cd pokerubc
 Instale as dependências:
 
-bash
-Copiar
-Editar
 yarn install
 # ou
 npm install
 Execute o app:
 
-bash
-Copiar
-Editar
 npx react-native run-android
 
 📸 Prints e evidências do produto final
