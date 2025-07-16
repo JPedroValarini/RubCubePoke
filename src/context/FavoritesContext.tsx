@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type PokemonType = {
@@ -10,16 +10,17 @@ type Pokemon = {
   name: string;
   imageUrl?: string;
   types?: PokemonType[];
+  originalId?: string;
 };
 
 type FavoritesContextData = {
   favorites: Pokemon[];
-  addFavorite: (pokemon: Pokemon) => void;
-  removeFavorite: (id: string) => void;
-  isFavorite: (id: string) => boolean;
+  addFavorite: (pokemon: Pokemon, isEvolved?: boolean) => void;
+  removeFavorite: (id: string, checkOriginalId?: boolean) => void;
+  isFavorite: (id: string, checkOriginalId?: boolean) => boolean;
   clearFavorites: () => void;
+  getOriginalIdIfEvolved: (id: string) => string | null;
 };
-
 
 const FavoritesContext = createContext<FavoritesContextData>({} as FavoritesContextData);
 
@@ -32,18 +33,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const saved = await AsyncStorage.getItem('@pokerub_favorites');
         if (saved) {
           const parsed = JSON.parse(saved);
-
-          const migratedFavorites = parsed.map((pokemon: any) => {
-            if (pokemon.type && !pokemon.types) {
-              return {
-                ...pokemon,
-                types: [{ name: pokemon.type }]
-              };
-            }
-            return pokemon;
-          });
-
-          setFavorites(migratedFavorites);
+          setFavorites(parsed);
         }
       } catch (error) {
         console.error('Error loading favorites', error);
@@ -52,27 +42,60 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     loadFavorites();
   }, []);
 
-  const addFavorite = (pokemon: Pokemon) => {
-    console.log('Adicionando favorito:', pokemon);
-    setFavorites(prev => [...prev, pokemon]);
-  };
+  useEffect(() => {
+    const saveFavorites = async () => {
+      try {
+        await AsyncStorage.setItem('@pokerub_favorites', JSON.stringify(favorites));
+      } catch (error) {
+        console.error('Error saving favorites', error);
+      }
+    };
+    saveFavorites();
+  }, [favorites]);
 
-  const removeFavorite = (id: string) => {
-    setFavorites(prev => prev.filter(p => p.id !== id));
-  };
+  const isFavorite = useCallback((id: string, checkOriginalId: boolean = true) => {
+    return favorites.some(p =>
+      p.id === id ||
+      (checkOriginalId && p.originalId === id)
+    );
+  }, [favorites]);
 
-  const clearFavorites = async () => {
+  const addFavorite = useCallback((pokemon: Pokemon, isEvolved: boolean = false) => {
+    setFavorites(prev => {
+      if (isFavorite(pokemon.id, false)) {
+        return prev;
+      }
+
+      const favoriteToAdd = isEvolved
+        ? { ...pokemon, originalId: pokemon.originalId || pokemon.id }
+        : pokemon;
+
+      return [...prev, favoriteToAdd];
+    });
+  }, [isFavorite]);
+
+  const removeFavorite = useCallback((id: string, checkOriginalId: boolean = true) => {
+    setFavorites(prev =>
+      prev.filter(p =>
+        p.id !== id &&
+        (!checkOriginalId || p.originalId !== id)
+      )
+    );
+  }, []);
+
+  const clearFavorites = useCallback(async () => {
     try {
       await AsyncStorage.removeItem('@pokerub_favorites');
       setFavorites([]);
     } catch (error) {
       console.error('Error clearing favorites', error);
     }
-  };
+  }, []);
 
-  const isFavorite = (id: string) => {
-    return favorites.some(p => p.id === id);
-  };
+  const getOriginalIdIfEvolved = useCallback((id: string) => {
+    const found = favorites.find(p => p.id === id);
+    return found?.originalId || null;
+  }, [favorites]);
 
   return (
     <FavoritesContext.Provider
@@ -81,7 +104,8 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addFavorite,
         removeFavorite,
         isFavorite,
-        clearFavorites
+        clearFavorites,
+        getOriginalIdIfEvolved
       }}
     >
       {children}

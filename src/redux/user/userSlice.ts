@@ -13,9 +13,9 @@ const userSlice = createSlice({
       const pokemonId = action.payload;
       const index = state.favorites.indexOf(pokemonId);
       if (index >= 0) {
-        state.favorites.splice(index, 1); // Remove
+        state.favorites.splice(index, 1);
       } else {
-        state.favorites.push(pokemonId); // Adiciona
+        state.favorites.push(pokemonId);
       }
     },
   },

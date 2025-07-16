@@ -1,24 +1,10 @@
+// Este arquivo pode ser removido pois toda a lógica foi movida para o pokemonSlice.ts
+// Mantenha apenas se estiver sendo usado em outros lugares específicos
+
 import { EVOLVE_POKEMON, SET_POKEMONS } from './pokemonActions';
 
-interface PokemonEvolution {
-  id: string;
-  name: string;
-  evolvesFromId: string | null;
-}
-
-interface PokemonApiResponse {
-  id: string;
-  name: string;
-  pokemon_v2_pokemontypes: {
-    pokemon_v2_type: {
-      name: string;
-    };
-  }[];
-  evolutionChain: PokemonEvolution[];
-}
-
 interface PokemonState {
-  pokemons: PokemonApiResponse[];
+  pokemons: any[];
   evolvedPokemons: Record<string, string>;
 }
 

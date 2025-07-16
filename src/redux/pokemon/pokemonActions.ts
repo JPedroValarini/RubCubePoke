@@ -25,34 +25,49 @@ export const SET_POKEMONS = 'SET_POKEMONS';
 export const fetchPokemons = createAsyncThunk(
   'pokemon/fetchAll',
   async () => {
-    const { data } = await client.query({
-      query: gql`
-        query SamplePokeAPIquery {
-          pokemon_v2_pokemon(limit: 898) {
-            id
-            name
-            pokemon_v2_pokemonsprites {
-              sprites(path: "front_default")
+    console.log('[pokemonActions] fetchPokemons started'); // LOG 1
+    try {
+      const { data } = await client.query({
+        query: gql`
+          query SamplePokeAPIquery {
+            pokemon_v2_pokemon(limit: 50) {
+              id
+              name
+              pokemon_v2_pokemonsprites {
+                sprites(path: "front_default")
+              }
             }
           }
-        }
-      `,
-    });
+        `,
+      });
 
-    return data.pokemon_v2_pokemon.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      sprites: { front_default: p.pokemon_v2_pokemonsprites[0].sprites },
-    }));
+      const transformedData = data.pokemon_v2_pokemon.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        sprites: { front_default: p.pokemon_v2_pokemonsprites[0].sprites },
+      }));
+
+      console.log('[pokemonActions] fetchPokemons success', transformedData.length, 'pokemons loaded'); // LOG 2
+      return transformedData;
+    } catch (error) {
+      console.error('[pokemonActions] fetchPokemons error', error); // LOG 3
+      throw error;
+    }
   }
 );
 
-export const evolvePokemon = (originalId: string, evolvedId: string) => ({
-  type: EVOLVE_POKEMON,
-  payload: { originalId, evolvedId }
-});
+export const evolvePokemon = (originalId: string, evolvedId: string) => {
+  console.log('[pokemonActions] evolvePokemon dispatched', { originalId, evolvedId }); // LOG 4
+  return {
+    type: EVOLVE_POKEMON,
+    payload: { originalId, evolvedId }
+  };
+};
 
-export const setPokemons = (pokemons: PokemonApiResponse[]) => ({
-  type: SET_POKEMONS,
-  payload: pokemons
-});
+export const setPokemons = (pokemons: PokemonApiResponse[]) => {
+  console.log('[pokemonActions] setPokemons dispatched', pokemons.length, 'pokemons'); // LOG 5
+  return {
+    type: SET_POKEMONS,
+    payload: pokemons
+  };
+};
