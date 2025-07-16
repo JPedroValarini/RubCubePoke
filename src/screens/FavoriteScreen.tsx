@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useFavorites } from '../context/FavoritesContext';
 
 const { width } = Dimensions.get('window');
 
@@ -20,15 +21,13 @@ interface Pokemon {
   id: string;
   name: string;
   imageUrl?: string;
-  isFavorite?: boolean;
-  type?: string;
+  types?: { name: string }[];
 }
 
-const FavoriteScreen = ({ route, navigation }: any) => {
-  const { favorites }: { favorites: Pokemon[] } = route.params;
+const FavoriteScreen = ({ navigation }: any) => {
+  const { favorites, removeFavorite, clearFavorites } = useFavorites();
   const spinValue = new Animated.Value(0);
 
-  // Animação mais suave
   Animated.loop(
     Animated.sequence([
       Animated.timing(spinValue, {
@@ -82,6 +81,7 @@ const FavoriteScreen = ({ route, navigation }: any) => {
           onPressIn={onPressIn}
           onPressOut={onPressOut}
           onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
+          onLongPress={() => removeFavorite(item.id)}
         >
           <LinearGradient
             colors={['#fff3cd', '#ffc107']}
@@ -104,10 +104,19 @@ const FavoriteScreen = ({ route, navigation }: any) => {
 
             <View style={styles.cardFooter}>
               <Text style={styles.name}>{item.name}</Text>
-              {item.type && (
-                <View style={[styles.typeBadge, { backgroundColor: getTypeColor(item.type) }]}>
-                  <Text style={styles.typeText}>{item.type}</Text>
+              {item.types && item.types.length > 0 ? (
+                <View style={styles.typesContainer}>
+                  {item.types.map((type, index) => (
+                    <View
+                      key={index}
+                      style={[styles.typeBadge, { backgroundColor: getTypeColor(type.name) }]}
+                    >
+                      <Text style={styles.typeText}>{type.name}</Text>
+                    </View>
+                  ))}
                 </View>
+              ) : (
+                <Text style={styles.noTypeText}>Sem tipo definido</Text>
               )}
             </View>
           </LinearGradient>
@@ -118,13 +127,24 @@ const FavoriteScreen = ({ route, navigation }: any) => {
 
   return (
     <ImageBackground
-      // source={require('./assets/pokeball-pattern.png')}
       style={styles.container}
       imageStyle={{ opacity: 0.05 }}
     >
       <View style={styles.header}>
         <Text style={styles.title}>Pokémon Favoritos</Text>
         <View style={styles.divider} />
+        <View style={styles.headerActions}>
+          <Text style={styles.countText}>{favorites.length} {favorites.length === 1 ? 'favorito' : 'favoritos'}</Text>
+          {favorites.length > 0 && (
+            <TouchableOpacity
+              onPress={() => clearFavorites()}
+              style={styles.clearButton}
+            >
+              <MaterialIcons name="delete" size={20} color="#dc3545" />
+              <Text style={styles.clearButtonText}>Limpar tudo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {favorites.length === 0 ? (
@@ -148,16 +168,28 @@ const FavoriteScreen = ({ route, navigation }: any) => {
   );
 };
 
-// Função auxiliar para cores de tipo (adicione mais conforme necessário)
-const getTypeColor = (type: string) => {
+const getTypeColor = (typeName: string) => {
   const colors: Record<string, string> = {
     fire: '#fd7d24',
     water: '#4592c4',
     grass: '#9bcc50',
     electric: '#eed535',
-    // Adicione outros tipos aqui
+    poison: '#b97fc9',
+    flying: '#3dc7ef',
+    ice: '#51c4e7',
+    fighting: '#d56723',
+    ground: '#f7de3f',
+    psychic: '#f366b9',
+    bug: '#729f3f',
+    rock: '#a38c21',
+    ghost: '#7b62a3',
+    dragon: '#53a4cf',
+    dark: '#707070',
+    steel: '#9eb7b8',
+    fairy: '#fdb9e9',
+    normal: '#a4acaf'
   };
-  return colors[type.toLowerCase()] || '#a0a0a0';
+  return colors[typeName.toLowerCase()] || '#a0a0a0';
 };
 
 const styles = StyleSheet.create({
@@ -167,7 +199,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 16,
     alignItems: 'center',
   },
   title: {
@@ -180,11 +212,16 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   divider: {
-    height: 4,
-    width: 80,
+    height: 3,
+    width: 100,
     backgroundColor: '#ffc107',
     borderRadius: 2,
-    marginTop: 8,
+    marginVertical: 8,
+  },
+  countText: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '600',
   },
   card: {
     borderRadius: 16,
@@ -253,6 +290,40 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
+  typesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 4,
+  },
+  noTypeText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#f8d7da',
+    borderRadius: 6,
+  },
+
+  clearButtonText: {
+    color: '#dc3545',
+    marginLeft: 5,
+    fontWeight: '600',
+  },
+
   listContent: {
     paddingBottom: 24,
   },
