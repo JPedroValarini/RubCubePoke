@@ -7,14 +7,21 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useQuery } from '@apollo/client';
 import { GET_POKEMONS } from './../graphql/queries';
+import { useFavorites } from '../context/FavoritesContext';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-interface Pokemon {
+interface PokemonApiResponse {
   id: string;
   name: string;
-  isFavorite?: boolean;
+  pokemon_v2_pokemontypes: {
+    pokemon_v2_type: {
+      name: string;
+    };
+  }[];
 }
 
 const POKEMONS_PER_PAGE = 10;
@@ -23,8 +30,8 @@ const TOTAL_PAGES = Math.ceil(TOTAL_POKEMONS / POKEMONS_PER_PAGE);
 
 const HomeScreen = ({ navigation }: any) => {
   const [search, setSearch] = useState('');
-  const [favorites, setFavorites] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const offset = (currentPage - 1) * POKEMONS_PER_PAGE;
 
@@ -33,14 +40,14 @@ const HomeScreen = ({ navigation }: any) => {
     fetchPolicy: 'cache-and-network',
   });
 
-  const pokemons: Pokemon[] = useMemo(() => {
+  const pokemons: PokemonApiResponse[] = useMemo(() => {
     if (!data) return [];
     return data.pokemon_v2_pokemon.map((p: any) => ({
       id: String(p.id),
       name: p.name,
-      isFavorite: favorites.includes(String(p.id)),
+      pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || []
     }));
-  }, [data, favorites]);
+  }, [data]);
 
   const filteredPokemons = useMemo(() => {
     return search
@@ -50,32 +57,53 @@ const HomeScreen = ({ navigation }: any) => {
       : pokemons;
   }, [pokemons, search]);
 
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev =>
-      prev.includes(id)
-        ? prev.filter(favId => favId !== id)
-        : [...prev, id]
-    );
+  const toggleFavorite = (pokemon: PokemonApiResponse) => {
+    if (isFavorite(pokemon.id)) {
+      removeFavorite(pokemon.id);
+    } else {
+      addFavorite({
+        id: pokemon.id,
+        name: pokemon.name,
+        imageUrl: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png`,
+        types: pokemon.pokemon_v2_pokemontypes.map(t => ({
+          name: t.pokemon_v2_type.name
+        }))
+      });
+    }
   };
 
-  const renderItem = ({ item }: { item: Pokemon }) => (
-    <TouchableOpacity
-      style={[styles.item, item.isFavorite && styles.favoriteItem]}
-      onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
-    >
-      <Text style={styles.name}>{item.name}</Text>
+  const renderItem = ({ item }: { item: PokemonApiResponse }) => {
+    const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png`;
+
+    return (
       <TouchableOpacity
-        onPress={(e) => {
-          e.stopPropagation();
-          toggleFavorite(item.id);
-        }}
+        style={[styles.item, isFavorite(item.id) && styles.favoriteItem]}
+        onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
       >
-        <Text style={styles.favoriteIcon}>
-          {item.isFavorite ? '★' : '☆'}
-        </Text>
+        <View style={styles.itemContent}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.pokemonImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.name}>{item.name}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleFavorite(item);
+          }}
+          style={styles.favoriteButton}
+        >
+          <MaterialIcons
+            name={isFavorite(item.id) ? 'star' : 'star-outline'}
+            size={24}
+            color="#ffc107"
+          />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderPagination = () => {
     const visiblePages = 5;
@@ -127,19 +155,16 @@ const HomeScreen = ({ navigation }: any) => {
 
       <TouchableOpacity
         style={styles.favButton}
-        onPress={() =>
-          navigation.navigate('Favorites', {
-            favorites: pokemons.filter(p => p.isFavorite),
-          })
-        }
+        onPress={() => navigation.navigate('Favorites')}
       >
-        <Text style={styles.favButtonText}>Ver Favoritos</Text>
+        <Text style={styles.favButtonText}>
+          Ver Favoritos ({favorites.length})
+        </Text>
       </TouchableOpacity>
 
       {loading ? (
         <ActivityIndicator size="large" color="#555" />
       ) : (
-
         <FlatList
           data={filteredPokemons}
           keyExtractor={(item) => `pokemon-${item.id}`}
@@ -152,42 +177,63 @@ const HomeScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#333',
+    color: '#343a40',
+    textAlign: 'center',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     marginBottom: 12,
     backgroundColor: '#fff',
+    fontSize: 16,
   },
   item: {
     padding: 12,
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#fff',
     marginBottom: 8,
-    borderRadius: 6,
+    borderRadius: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   favoriteItem: {
     backgroundColor: '#fff3cd',
   },
-  name: {
-    fontSize: 18,
-    textTransform: 'capitalize',
-    color: '#222',
+  itemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  favoriteIcon: {
-    fontSize: 20,
-    color: '#ffc107',
+  pokemonImage: {
+    width: 50,
+    height: 50,
+    marginRight: 12,
+  },
+  name: {
+    fontSize: 16,
+    textTransform: 'capitalize',
+    color: '#343a40',
+    fontWeight: '500',
+  },
+  favoriteButton: {
+    padding: 8,
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -195,29 +241,32 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   pageButton: {
-    padding: 8,
+    padding: 10,
     marginHorizontal: 4,
     backgroundColor: '#e0e0e0',
-    borderRadius: 4,
+    borderRadius: 6,
+    minWidth: 40,
+    alignItems: 'center',
   },
   activePageButton: {
     backgroundColor: '#ffc107',
   },
+  pageText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
   favButton: {
     backgroundColor: '#ffc107',
-    padding: 12,
+    padding: 14,
     borderRadius: 8,
     marginBottom: 16,
     alignItems: 'center',
+    elevation: 2,
   },
   favButtonText: {
-    color: '#000',
+    color: '#343a40',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-
-  pageText: {
-    fontSize: 16,
   },
 });
 

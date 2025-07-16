@@ -5,6 +5,11 @@ export const GET_POKEMONS = gql`
     pokemon_v2_pokemon(limit: $limit, offset: $offset, order_by: {id: asc}) {
       id
       name
+      pokemon_v2_pokemontypes {
+        pokemon_v2_type {
+          name
+        }
+      }
     }
   }
 `;
