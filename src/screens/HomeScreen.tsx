@@ -8,11 +8,19 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
 import { useQuery } from '@apollo/client';
 import { GET_POKEMONS } from './../graphql/queries';
 import { useFavorites } from '../context/FavoritesContext';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import PokemonCard from '../components/PokemonCard';
+
+interface PokemonEvolution {
+  id: string;
+  name: string;
+  evolvesFromId: string | null;
+}
 
 interface PokemonApiResponse {
   id: string;
@@ -22,6 +30,7 @@ interface PokemonApiResponse {
       name: string;
     };
   }[];
+  evolutionChain: PokemonEvolution[];
 }
 
 const POKEMONS_PER_PAGE = 10;
@@ -31,6 +40,8 @@ const TOTAL_PAGES = Math.ceil(TOTAL_POKEMONS / POKEMONS_PER_PAGE);
 const HomeScreen = ({ navigation }: any) => {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [evolutionModalVisible, setEvolutionModalVisible] = useState(false);
+  const [selectedPokemon, setSelectedPokemon] = useState<PokemonApiResponse | null>(null);
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const offset = (currentPage - 1) * POKEMONS_PER_PAGE;
@@ -45,7 +56,12 @@ const HomeScreen = ({ navigation }: any) => {
     return data.pokemon_v2_pokemon.map((p: any) => ({
       id: String(p.id),
       name: p.name,
-      pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || []
+      pokemon_v2_pokemontypes: p.pokemon_v2_pokemontypes || [],
+      evolutionChain: p.pokemon_v2_pokemonspecy?.pokemon_v2_evolutionchain?.pokemon_v2_pokemonspecies?.map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        evolvesFromId: s.evolves_from_species_id ? String(s.evolves_from_species_id) : null
+      })) || []
     }));
   }, [data]);
 
@@ -56,6 +72,30 @@ const HomeScreen = ({ navigation }: any) => {
       )
       : pokemons;
   }, [pokemons, search]);
+
+  const getNextEvolution = (pokemon: PokemonApiResponse): PokemonEvolution | null => {
+    return pokemon.evolutionChain.find(evo => evo.evolvesFromId === pokemon.id) || null;
+  };
+
+  const handleEvolutionPress = (pokemon: PokemonApiResponse) => {
+    setSelectedPokemon(pokemon);
+    setEvolutionModalVisible(true);
+  };
+
+  const handleEvolutionConfirm = () => {
+    console.log(`${selectedPokemon?.name} evoluiu!`);
+    setEvolutionModalVisible(false);
+  };
+
+  const renderItem = ({ item }: { item: PokemonApiResponse }) => (
+    <PokemonCard
+      pokemon={item}
+      isFavorite={isFavorite(item.id)}
+      onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
+      onFavoritePress={() => toggleFavorite(item)}
+      onEvolutionPress={() => handleEvolutionPress(item)}
+    />
+  );
 
   const toggleFavorite = (pokemon: PokemonApiResponse) => {
     if (isFavorite(pokemon.id)) {
@@ -70,39 +110,6 @@ const HomeScreen = ({ navigation }: any) => {
         }))
       });
     }
-  };
-
-  const renderItem = ({ item }: { item: PokemonApiResponse }) => {
-    const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${item.id}.png`;
-
-    return (
-      <TouchableOpacity
-        style={[styles.item, isFavorite(item.id) && styles.favoriteItem]}
-        onPress={() => navigation.navigate('Details', { pokemonId: item.id })}
-      >
-        <View style={styles.itemContent}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.pokemonImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.name}>{item.name}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleFavorite(item);
-          }}
-          style={styles.favoriteButton}
-        >
-          <MaterialIcons
-            name={isFavorite(item.id) ? 'star' : 'star-outline'}
-            size={24}
-            color="#ffc107"
-          />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
   };
 
   const renderPagination = () => {
@@ -172,6 +179,59 @@ const HomeScreen = ({ navigation }: any) => {
           ListFooterComponent={renderPagination}
         />
       )}
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={evolutionModalVisible}
+        onRequestClose={() => setEvolutionModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            {selectedPokemon && (
+              <>
+                <Text style={styles.modalTitle}>Evoluir {selectedPokemon.name}?</Text>
+
+                <View style={styles.evolutionPreview}>
+                  <View style={styles.pokemonPreview}>
+                    <Image
+                      source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${selectedPokemon.id}.png` }}
+                      style={styles.previewImage}
+                    />
+                    <Text>{selectedPokemon.name}</Text>
+                  </View>
+
+                  <MaterialIcons name="arrow-forward" size={24} color="#333" />
+
+                  <View style={styles.pokemonPreview}>
+                    <Image
+                      source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${getNextEvolution(selectedPokemon)?.id}.png` }}
+                      style={styles.previewImage}
+                    />
+                    <Text>{getNextEvolution(selectedPokemon)?.name}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setEvolutionModalVisible(false)}
+                  >
+                    <Text style={styles.buttonText}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.confirmButton]}
+                    onPress={handleEvolutionConfirm}
+                  >
+                    <Text style={styles.buttonText}>Evoluir!</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -198,42 +258,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#fff',
     fontSize: 16,
-  },
-  item: {
-    padding: 12,
-    backgroundColor: '#fff',
-    marginBottom: 8,
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  favoriteItem: {
-    backgroundColor: '#fff3cd',
-  },
-  itemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  pokemonImage: {
-    width: 50,
-    height: 50,
-    marginRight: 12,
-  },
-  name: {
-    fontSize: 16,
-    textTransform: 'capitalize',
-    color: '#343a40',
-    fontWeight: '500',
-  },
-  favoriteButton: {
-    padding: 8,
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -266,6 +290,58 @@ const styles = StyleSheet.create({
   favButtonText: {
     color: '#343a40',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  evolutionPreview: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginVertical: 15,
+  },
+  pokemonPreview: {
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 80,
+    height: 80,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    padding: 10,
+    borderRadius: 5,
+    width: '48%',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#e0e0e0',
+  },
+  confirmButton: {
+    backgroundColor: '#4CAF50',
+  },
+  buttonText: {
+    color: 'white',
     fontWeight: 'bold',
   },
 });
