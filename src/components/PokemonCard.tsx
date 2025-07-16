@@ -31,6 +31,8 @@ interface PokemonCardProps {
   onPress: () => void;
   onFavoritePress: () => void;
   onEvolutionPress: () => void;
+  hasEvolved?: boolean;
+  evolvedPokemon?: PokemonApiResponse | null;
 }
 
 const PokemonCard: React.FC<PokemonCardProps> = ({
@@ -39,29 +41,38 @@ const PokemonCard: React.FC<PokemonCardProps> = ({
   onPress,
   onFavoritePress,
   onEvolutionPress,
+  hasEvolved,
+  evolvedPokemon
 }) => {
-  const canEvolve = pokemon.evolutionChain.length > 1 &&
+  const canEvolve = !hasEvolved &&
+    pokemon.evolutionChain.length > 1 &&
     pokemon.evolutionChain.some(evo => evo.evolvesFromId === pokemon.id);
+
+  const displayPokemon = hasEvolved && evolvedPokemon ? evolvedPokemon : pokemon;
 
   return (
     <TouchableOpacity
       style={[
         styles.item,
         isFavorite && styles.favoriteItem,
-        canEvolve && styles.evolvableItem
+        canEvolve && styles.evolvableItem,
+        hasEvolved && styles.evolvedItem
       ]}
       onPress={onPress}
     >
       <View style={styles.itemContent}>
         <Image
-          source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png` }}
+          source={{ uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${displayPokemon.id}.png` }}
           style={styles.pokemonImage}
           resizeMode="contain"
         />
         <View style={styles.nameContainer}>
-          <Text style={styles.name}>{pokemon.name}</Text>
+          <Text style={styles.name}>{displayPokemon.name}</Text>
           {canEvolve && (
             <Text style={styles.evolutionText}>Pode evoluir</Text>
+          )}
+          {hasEvolved && (
+            <Text style={styles.evolvedText}>Evoluído!</Text>
           )}
         </View>
       </View>
@@ -119,6 +130,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#4CAF50',
   },
+  evolvedItem: {
+    backgroundColor: '#e8f5e9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2e7d32',
+  },
   itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,6 +157,11 @@ const styles = StyleSheet.create({
   evolutionText: {
     fontSize: 12,
     color: '#4CAF50',
+    fontStyle: 'italic',
+  },
+  evolvedText: {
+    fontSize: 12,
+    color: '#2e7d32',
     fontStyle: 'italic',
   },
   actionsContainer: {
